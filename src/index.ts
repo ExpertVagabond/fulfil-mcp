@@ -44,6 +44,26 @@ import {
 
 import { dailyOpsBriefing } from "./tools/operations.js";
 
+import {
+  listPurchaseOrders,
+  getPurchaseOrder,
+  overduePurchaseOrders,
+  createPurchaseOrderDraft,
+} from "./tools/purchasing.js";
+
+import {
+  listReturns,
+  getReturn,
+  returnRateReport,
+} from "./tools/returns.js";
+
+import {
+  listWarehouses,
+  warehouseUtilization,
+  pendingReceipts,
+  pickList,
+} from "./tools/warehouse.js";
+
 // ---------------------------------------------------------------------------
 // Server
 // ---------------------------------------------------------------------------
@@ -421,6 +441,241 @@ server.tool(
   async () => {
     try {
       const text = await dailyOpsBriefing();
+      return { content: [{ type: "text", text }] };
+    } catch (err) {
+      return {
+        content: [{ type: "text", text: `Error: ${(err as Error).message}` }],
+        isError: true,
+      };
+    }
+  },
+);
+
+// ---- Purchasing Tools -----------------------------------------------------
+
+server.tool(
+  "list_purchase_orders",
+  "Search purchase orders by status, supplier, and date range. Returns PO summaries with delivery dates and fulfillment status.",
+  {
+    status: z.string().optional().describe("PO state filter (e.g. draft, confirmed, processing, done, cancelled)"),
+    supplier_name: z.string().optional().describe("Filter by supplier name (partial match)"),
+    date_from: z.string().optional().describe("Start date filter (YYYY-MM-DD)"),
+    date_to: z.string().optional().describe("End date filter (YYYY-MM-DD)"),
+    limit: z.number().optional().describe("Max results (default 25)"),
+    offset: z.number().optional().describe("Pagination offset (default 0)"),
+  },
+  async (args) => {
+    try {
+      const text = await listPurchaseOrders(args);
+      return { content: [{ type: "text", text }] };
+    } catch (err) {
+      return {
+        content: [{ type: "text", text: `Error: ${(err as Error).message}` }],
+        isError: true,
+      };
+    }
+  },
+);
+
+server.tool(
+  "get_purchase_order",
+  "Get detailed information about a specific purchase order including line items, expected delivery dates, and supplier details.",
+  {
+    purchase_order_id: z.number().describe("The Fulfil purchase order ID"),
+  },
+  async (args) => {
+    try {
+      const text = await getPurchaseOrder(args);
+      return { content: [{ type: "text", text }] };
+    } catch (err) {
+      return {
+        content: [{ type: "text", text: `Error: ${(err as Error).message}` }],
+        isError: true,
+      };
+    }
+  },
+);
+
+server.tool(
+  "overdue_purchase_orders",
+  "Find purchase orders past their expected delivery date that haven't been fully received. Critical for supplier follow-up.",
+  {
+    limit: z.number().optional().describe("Max results (default 50)"),
+  },
+  async (args) => {
+    try {
+      const text = await overduePurchaseOrders(args);
+      return { content: [{ type: "text", text }] };
+    } catch (err) {
+      return {
+        content: [{ type: "text", text: `Error: ${(err as Error).message}` }],
+        isError: true,
+      };
+    }
+  },
+);
+
+server.tool(
+  "create_purchase_order_draft",
+  "Create a draft purchase order for a supplier with specified products and quantities. Returns a preview with estimated totals.",
+  {
+    supplier_id: z.number().describe("The Fulfil party/supplier ID"),
+    products: z.array(z.object({
+      product_id: z.number().describe("Product ID to order"),
+      quantity: z.number().describe("Quantity to order"),
+      unit_price: z.number().optional().describe("Override unit price (defaults to product cost price)"),
+    })).describe("Array of products with quantities to order"),
+    delivery_date: z.string().optional().describe("Expected delivery date (YYYY-MM-DD)"),
+    warehouse_id: z.number().optional().describe("Destination warehouse ID"),
+    comment: z.string().optional().describe("Notes for the PO"),
+  },
+  async (args) => {
+    try {
+      const text = await createPurchaseOrderDraft(args);
+      return { content: [{ type: "text", text }] };
+    } catch (err) {
+      return {
+        content: [{ type: "text", text: `Error: ${(err as Error).message}` }],
+        isError: true,
+      };
+    }
+  },
+);
+
+// ---- Returns / RMA Tools --------------------------------------------------
+
+server.tool(
+  "list_returns",
+  "Search customer returns by status, date range, and reason. Returns summaries with refund status.",
+  {
+    status: z.string().optional().describe("Return state filter (e.g. draft, waiting, received, done, cancelled)"),
+    date_from: z.string().optional().describe("Start date filter (YYYY-MM-DD)"),
+    date_to: z.string().optional().describe("End date filter (YYYY-MM-DD)"),
+    reason: z.string().optional().describe("Filter by return reason/comment (partial match)"),
+    limit: z.number().optional().describe("Max results (default 25)"),
+    offset: z.number().optional().describe("Pagination offset (default 0)"),
+  },
+  async (args) => {
+    try {
+      const text = await listReturns(args);
+      return { content: [{ type: "text", text }] };
+    } catch (err) {
+      return {
+        content: [{ type: "text", text: `Error: ${(err as Error).message}` }],
+        isError: true,
+      };
+    }
+  },
+);
+
+server.tool(
+  "get_return",
+  "Get detailed information about a specific customer return including items, quantities, refund value, and reason.",
+  {
+    return_id: z.number().describe("The Fulfil return shipment ID"),
+  },
+  async (args) => {
+    try {
+      const text = await getReturn(args);
+      return { content: [{ type: "text", text }] };
+    } catch (err) {
+      return {
+        content: [{ type: "text", text: `Error: ${(err as Error).message}` }],
+        isError: true,
+      };
+    }
+  },
+);
+
+server.tool(
+  "return_rate_report",
+  "Calculate return rates and identify most-returned products for a date range. Shows return rate, return value, and product-level breakdown.",
+  {
+    date_from: z.string().describe("Start date (YYYY-MM-DD)"),
+    date_to: z.string().describe("End date (YYYY-MM-DD)"),
+    group_by: z.string().optional().describe("Group by: product or category (default: product)"),
+  },
+  async (args) => {
+    try {
+      const text = await returnRateReport(args);
+      return { content: [{ type: "text", text }] };
+    } catch (err) {
+      return {
+        content: [{ type: "text", text: `Error: ${(err as Error).message}` }],
+        isError: true,
+      };
+    }
+  },
+);
+
+// ---- Warehouse Tools ------------------------------------------------------
+
+server.tool(
+  "list_warehouses",
+  "List all warehouse locations with addresses, zones (input, output, storage, picking), and active status.",
+  {},
+  async () => {
+    try {
+      const text = await listWarehouses({});
+      return { content: [{ type: "text", text }] };
+    } catch (err) {
+      return {
+        content: [{ type: "text", text: `Error: ${(err as Error).message}` }],
+        isError: true,
+      };
+    }
+  },
+);
+
+server.tool(
+  "warehouse_utilization",
+  "Show warehouse utilization: active SKUs, total units on hand, available vs reserved stock. Optionally filter by warehouse name.",
+  {
+    warehouse_name: z.string().optional().describe("Filter by warehouse name (partial match)"),
+  },
+  async (args) => {
+    try {
+      const text = await warehouseUtilization(args);
+      return { content: [{ type: "text", text }] };
+    } catch (err) {
+      return {
+        content: [{ type: "text", text: `Error: ${(err as Error).message}` }],
+        isError: true,
+      };
+    }
+  },
+);
+
+server.tool(
+  "pending_receipts",
+  "Show inbound shipments/receipts expected at warehouses, including overdue flags. Useful for receiving dock planning.",
+  {
+    warehouse_name: z.string().optional().describe("Filter by warehouse name (partial match)"),
+    limit: z.number().optional().describe("Max results (default 50)"),
+  },
+  async (args) => {
+    try {
+      const text = await pendingReceipts(args);
+      return { content: [{ type: "text", text }] };
+    } catch (err) {
+      return {
+        content: [{ type: "text", text: `Error: ${(err as Error).message}` }],
+        isError: true,
+      };
+    }
+  },
+);
+
+server.tool(
+  "pick_list",
+  "Generate a consolidated pick list for pending outbound shipments. Groups items by product and location for efficient warehouse picking.",
+  {
+    warehouse_name: z.string().optional().describe("Filter by warehouse name (partial match)"),
+    limit: z.number().optional().describe("Max shipments to include (default 30)"),
+  },
+  async (args) => {
+    try {
+      const text = await pickList(args);
       return { content: [{ type: "text", text }] };
     } catch (err) {
       return {
