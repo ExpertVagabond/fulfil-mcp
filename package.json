@@ -1,7 +1,7 @@
 {
   "name": "fulfil-mcp",
   "version": "0.1.0",
-  "description": "MCP server for Fulfil.io ERP — inventory, orders, shipments, and analytics",
+  "description": "MCP server for Fulfil.io ERP — 29 tools for inventory, orders, shipments, customers, analytics, purchasing, returns, and warehouse operations",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
@@ -14,14 +14,30 @@
   },
   "keywords": [
     "mcp",
+    "model-context-protocol",
     "fulfil",
+    "fulfil-io",
     "erp",
     "inventory",
     "orders",
-    "shipments"
+    "shipments",
+    "warehouse",
+    "purchasing",
+    "returns",
+    "analytics",
+    "claude",
+    "ai-tools"
   ],
-  "author": "Matthew Karsten",
+  "author": "Matthew Karsten <MatthewKarstenConnects@gmail.com> (https://github.com/ExpertVagabond)",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ExpertVagabond/fulfil-mcp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ExpertVagabond/fulfil-mcp/issues"
+  },
+  "homepage": "https://github.com/ExpertVagabond/fulfil-mcp#readme",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0"
   },
