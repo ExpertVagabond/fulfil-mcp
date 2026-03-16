@@ -2,6 +2,7 @@
 name = "fulfil-mcp"
 version = "0.1.0"
 edition = "2024"
+description = "MCP server for Fulfil.io ERP — inventory, orders, shipments, customer management"
 license = "MIT"
 authors = ["Purple Squirrel Media LLC"]
 
