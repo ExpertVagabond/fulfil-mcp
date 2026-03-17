@@ -1,10 +1,16 @@
 #![recursion_limit = "512"]
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::io::BufRead;
 
 #[derive(Deserialize)]
-struct JsonRpcRequest { #[allow(dead_code)] jsonrpc: String, id: Option<Value>, method: String, params: Option<Value> }
+struct JsonRpcRequest {
+    #[allow(dead_code)]
+    jsonrpc: String,
+    id: Option<Value>,
+    method: String,
+    params: Option<Value>,
+}
 
 struct FulfilClient {
     base_url: String,
@@ -15,7 +21,8 @@ struct FulfilClient {
 impl FulfilClient {
     fn new() -> Result<Self, String> {
         let api_key = std::env::var("FULFIL_API_KEY").map_err(|_| "FULFIL_API_KEY required")?;
-        let subdomain = std::env::var("FULFIL_SUBDOMAIN").map_err(|_| "FULFIL_SUBDOMAIN required")?;
+        let subdomain =
+            std::env::var("FULFIL_SUBDOMAIN").map_err(|_| "FULFIL_SUBDOMAIN required")?;
         Ok(Self {
             base_url: format!("https://{subdomain}.fulfil.io/api/v2"),
             api_key,
@@ -25,12 +32,16 @@ impl FulfilClient {
 
     async fn search_read(&self, model: &str, payload: &Value) -> Result<Value, String> {
         let url = format!("{}/model/{}", self.base_url, model);
-        let res = self.client.put(&url)
+        let res = self
+            .client
+            .put(&url)
             .header("Authorization", format!("Bearer {}", self.api_key))
             .header("Content-Type", "application/json")
             .header("Accept", "application/json")
             .json(payload)
-            .send().await.map_err(|e| format!("Request failed: {e}"))?;
+            .send()
+            .await
+            .map_err(|e| format!("Request failed: {e}"))?;
         if !res.status().is_success() {
             let status = res.status();
             let body = res.text().await.unwrap_or_default();
@@ -40,12 +51,20 @@ impl FulfilClient {
     }
 
     async fn read_one(&self, model: &str, id: i64, fields: &[&str]) -> Result<Value, String> {
-        let fields_qs = if fields.is_empty() { String::new() } else { format!("?fields={}", fields.join(",")) };
+        let fields_qs = if fields.is_empty() {
+            String::new()
+        } else {
+            format!("?fields={}", fields.join(","))
+        };
         let url = format!("{}/model/{}/{}{}", self.base_url, model, id, fields_qs);
-        let res = self.client.get(&url)
+        let res = self
+            .client
+            .get(&url)
             .header("Authorization", format!("Bearer {}", self.api_key))
             .header("Accept", "application/json")
-            .send().await.map_err(|e| format!("Request failed: {e}"))?;
+            .send()
+            .await
+            .map_err(|e| format!("Request failed: {e}"))?;
         if !res.status().is_success() {
             let status = res.status();
             let body = res.text().await.unwrap_or_default();
@@ -93,7 +112,9 @@ fn build_filters(args: &Value, field_map: &[(&str, &str, &str)]) -> Vec<Value> {
     let mut filters = Vec::new();
     for (arg_key, field, op) in field_map {
         if let Some(v) = args.get(*arg_key) {
-            if v.is_null() { continue; }
+            if v.is_null() {
+                continue;
+            }
             match v {
                 Value::String(s) if !s.is_empty() => {
                     if *op == "ilike" {
@@ -102,7 +123,9 @@ fn build_filters(args: &Value, field_map: &[(&str, &str, &str)]) -> Vec<Value> {
                         filters.push(json!([field, op, s]));
                     }
                 }
-                Value::Number(n) => { filters.push(json!([field, op, n])); }
+                Value::Number(n) => {
+                    filters.push(json!([field, op, n]));
+                }
                 _ => {}
             }
         }
@@ -121,7 +144,14 @@ async fn call_tool(name: &str, args: &Value, client: &FulfilClient) -> Value {
 async fn call_tool_inner(name: &str, args: &Value, c: &FulfilClient) -> Result<String, String> {
     match name {
         "list_products" => {
-            let filters = build_filters(args, &[("query","rec_name","ilike"),("sku","code","ilike"),("category","template.categories.name","ilike")]);
+            let filters = build_filters(
+                args,
+                &[
+                    ("query", "rec_name", "ilike"),
+                    ("sku", "code", "ilike"),
+                    ("category", "template.categories.name", "ilike"),
+                ],
+            );
             let limit = args["limit"].as_i64().unwrap_or(25);
             let offset = args["offset"].as_i64().unwrap_or(0);
             let data = c.search_read("product.product", &json!({"filters":filters,"fields":["id","rec_name","code","list_price","cost_price","type","salable"],"limit":limit,"offset":offset})).await?;
@@ -129,7 +159,23 @@ async fn call_tool_inner(name: &str, args: &Value, c: &FulfilClient) -> Result<S
         }
         "get_product" => {
             let id = args["product_id"].as_i64().ok_or("product_id required")?;
-            let data = c.read_one("product.product", id, &["id","rec_name","code","list_price","cost_price","type","salable","weight","categories"]).await?;
+            let data = c
+                .read_one(
+                    "product.product",
+                    id,
+                    &[
+                        "id",
+                        "rec_name",
+                        "code",
+                        "list_price",
+                        "cost_price",
+                        "type",
+                        "salable",
+                        "weight",
+                        "categories",
+                    ],
+                )
+                .await?;
             Ok(serde_json::to_string_pretty(&data).unwrap_or_default())
         }
         "check_inventory" => {
@@ -145,13 +191,25 @@ async fn call_tool_inner(name: &str, args: &Value, c: &FulfilClient) -> Result<S
         }
         "inventory_by_location" => {
             let mut filters = Vec::new();
-            if let Some(pid) = args["product_id"].as_i64() { filters.push(json!(["product","=",pid])); }
-            if let Some(loc) = args["location_name"].as_str() { filters.push(json!(["location.rec_name","ilike",format!("%{loc}%")])); }
+            if let Some(pid) = args["product_id"].as_i64() {
+                filters.push(json!(["product", "=", pid]));
+            }
+            if let Some(loc) = args["location_name"].as_str() {
+                filters.push(json!(["location.rec_name", "ilike", format!("%{loc}%")]));
+            }
             let data = c.search_read("stock.inventory.line", &json!({"filters":filters,"fields":["id","product.rec_name","location.rec_name","quantity","expected_quantity"],"limit":100})).await?;
             Ok(serde_json::to_string_pretty(&data).unwrap_or_default())
         }
         "list_orders" => {
-            let filters = build_filters(args, &[("status","state","="),("customer_name","party.name","ilike"),("date_from","sale_date",">="),("date_to","sale_date","<=")]);
+            let filters = build_filters(
+                args,
+                &[
+                    ("status", "state", "="),
+                    ("customer_name", "party.name", "ilike"),
+                    ("date_from", "sale_date", ">="),
+                    ("date_to", "sale_date", "<="),
+                ],
+            );
             let limit = args["limit"].as_i64().unwrap_or(25);
             let offset = args["offset"].as_i64().unwrap_or(0);
             let data = c.search_read("sale.sale", &json!({"filters":filters,"fields":["id","number","party.name","sale_date","state","total_amount","shipment_state","invoice_state"],"limit":limit,"offset":offset,"order":[["sale_date","DESC"]]})).await?;
@@ -159,7 +217,25 @@ async fn call_tool_inner(name: &str, args: &Value, c: &FulfilClient) -> Result<S
         }
         "get_order" => {
             let id = args["order_id"].as_i64().ok_or("order_id required")?;
-            let data = c.read_one("sale.sale", id, &["id","number","party.name","sale_date","state","total_amount","tax_amount","shipment_state","invoice_state","shipping_address","lines"]).await?;
+            let data = c
+                .read_one(
+                    "sale.sale",
+                    id,
+                    &[
+                        "id",
+                        "number",
+                        "party.name",
+                        "sale_date",
+                        "state",
+                        "total_amount",
+                        "tax_amount",
+                        "shipment_state",
+                        "invoice_state",
+                        "shipping_address",
+                        "lines",
+                    ],
+                )
+                .await?;
             Ok(serde_json::to_string_pretty(&data).unwrap_or_default())
         }
         "order_status" => {
@@ -168,18 +244,30 @@ async fn call_tool_inner(name: &str, args: &Value, c: &FulfilClient) -> Result<S
             Ok(serde_json::to_string_pretty(&data).unwrap_or_default())
         }
         "delayed_orders" | "recent_orders" => {
-            let limit = args.get("limit").or(args.get("count")).and_then(|v| v.as_i64()).unwrap_or(if name == "delayed_orders" { 50 } else { 10 });
-            let mut filters: Vec<Value> = vec![json!(["state","in",["confirmed","processing"]])];
+            let limit = args
+                .get("limit")
+                .or(args.get("count"))
+                .and_then(|v| v.as_i64())
+                .unwrap_or(if name == "delayed_orders" { 50 } else { 10 });
+            let mut filters: Vec<Value> = vec![json!(["state", "in", ["confirmed", "processing"]])];
             if name == "delayed_orders" {
                 let days = args["days"].as_i64().unwrap_or(7);
-                filters.push(json!(["sale_date","<=",format!("{{today - {}d}}", days)]));
-                filters.push(json!(["shipment_state","!=","sent"]));
+                filters.push(json!(["sale_date", "<=", format!("{{today - {}d}}", days)]));
+                filters.push(json!(["shipment_state", "!=", "sent"]));
             }
             let data = c.search_read("sale.sale", &json!({"filters":filters,"fields":["id","number","party.name","sale_date","state","total_amount","shipment_state"],"limit":limit,"order":[["sale_date","DESC"]]})).await?;
             Ok(serde_json::to_string_pretty(&data).unwrap_or_default())
         }
         "list_shipments" => {
-            let filters = build_filters(args, &[("status","state","="),("date_from","planned_date",">="),("date_to","planned_date","<="),("carrier","carrier.rec_name","ilike")]);
+            let filters = build_filters(
+                args,
+                &[
+                    ("status", "state", "="),
+                    ("date_from", "planned_date", ">="),
+                    ("date_to", "planned_date", "<="),
+                    ("carrier", "carrier.rec_name", "ilike"),
+                ],
+            );
             let limit = args["limit"].as_i64().unwrap_or(25);
             let offset = args["offset"].as_i64().unwrap_or(0);
             let data = c.search_read("stock.shipment.out", &json!({"filters":filters,"fields":["id","number","state","planned_date","effective_date","carrier.rec_name","tracking_number","customer.name"],"limit":limit,"offset":offset})).await?;
@@ -191,7 +279,14 @@ async fn call_tool_inner(name: &str, args: &Value, c: &FulfilClient) -> Result<S
             Ok(serde_json::to_string_pretty(&data).unwrap_or_default())
         }
         "search_customers" => {
-            let filters = build_filters(args, &[("query","name","ilike"),("email","contact_mechanisms.value","ilike"),("phone","contact_mechanisms.value","ilike")]);
+            let filters = build_filters(
+                args,
+                &[
+                    ("query", "name", "ilike"),
+                    ("email", "contact_mechanisms.value", "ilike"),
+                    ("phone", "contact_mechanisms.value", "ilike"),
+                ],
+            );
             let limit = args["limit"].as_i64().unwrap_or(25);
             let offset = args["offset"].as_i64().unwrap_or(0);
             let data = c.search_read("party.party", &json!({"filters":filters,"fields":["id","name","email","phone","addresses"],"limit":limit,"offset":offset})).await?;
@@ -210,27 +305,59 @@ async fn call_tool_inner(name: &str, args: &Value, c: &FulfilClient) -> Result<S
             Ok(serde_json::to_string_pretty(&data).unwrap_or_default())
         }
         "inventory_valuation" => {
-            let mut filters = vec![json!(["salable","=",true])];
+            let mut filters = vec![json!(["salable", "=", true])];
             if let Some(cat) = args["category"].as_str() {
-                filters.push(json!(["template.categories.name","ilike",format!("%{cat}%")]));
+                filters.push(json!([
+                    "template.categories.name",
+                    "ilike",
+                    format!("%{cat}%")
+                ]));
             }
             let data = c.search_read("product.product", &json!({"filters":filters,"fields":["id","rec_name","cost_price","quantity_on_hand"],"limit":500})).await?;
             Ok(serde_json::to_string_pretty(&data).unwrap_or_default())
         }
         "daily_ops_briefing" => {
             let orders = c.search_read("sale.sale", &json!({"filters":[["state","in",["confirmed","processing"]]],"fields":["id","state","shipment_state","total_amount"],"limit":500})).await?;
-            Ok(serde_json::to_string_pretty(&json!({"briefing":"daily_ops","pending_orders":orders})).unwrap_or_default())
+            Ok(serde_json::to_string_pretty(
+                &json!({"briefing":"daily_ops","pending_orders":orders}),
+            )
+            .unwrap_or_default())
         }
         "list_purchase_orders" => {
-            let filters = build_filters(args, &[("status","state","="),("supplier_name","party.name","ilike"),("date_from","purchase_date",">="),("date_to","purchase_date","<=")]);
+            let filters = build_filters(
+                args,
+                &[
+                    ("status", "state", "="),
+                    ("supplier_name", "party.name", "ilike"),
+                    ("date_from", "purchase_date", ">="),
+                    ("date_to", "purchase_date", "<="),
+                ],
+            );
             let limit = args["limit"].as_i64().unwrap_or(25);
             let offset = args["offset"].as_i64().unwrap_or(0);
             let data = c.search_read("purchase.purchase", &json!({"filters":filters,"fields":["id","number","party.name","purchase_date","state","total_amount","shipment_state"],"limit":limit,"offset":offset})).await?;
             Ok(serde_json::to_string_pretty(&data).unwrap_or_default())
         }
         "get_purchase_order" => {
-            let id = args["purchase_order_id"].as_i64().ok_or("purchase_order_id required")?;
-            let data = c.read_one("purchase.purchase", id, &["id","number","party.name","purchase_date","state","total_amount","lines","delivery_date"]).await?;
+            let id = args["purchase_order_id"]
+                .as_i64()
+                .ok_or("purchase_order_id required")?;
+            let data = c
+                .read_one(
+                    "purchase.purchase",
+                    id,
+                    &[
+                        "id",
+                        "number",
+                        "party.name",
+                        "purchase_date",
+                        "state",
+                        "total_amount",
+                        "lines",
+                        "delivery_date",
+                    ],
+                )
+                .await?;
             Ok(serde_json::to_string_pretty(&data).unwrap_or_default())
         }
         "overdue_purchase_orders" => {
@@ -238,11 +365,20 @@ async fn call_tool_inner(name: &str, args: &Value, c: &FulfilClient) -> Result<S
             let data = c.search_read("purchase.purchase", &json!({"filters":[["state","in",["confirmed","processing"]],["shipment_state","!=","received"]],"fields":["id","number","party.name","purchase_date","state","delivery_date","shipment_state"],"limit":limit})).await?;
             Ok(serde_json::to_string_pretty(&data).unwrap_or_default())
         }
-        "create_purchase_order_draft" => {
-            Ok(format!("Draft PO creation: supplier_id={}, products={}\nNote: Use Fulfil.io UI to finalize and confirm the PO.", args["supplier_id"], args["products"]))
-        }
+        "create_purchase_order_draft" => Ok(format!(
+            "Draft PO creation: supplier_id={}, products={}\nNote: Use Fulfil.io UI to finalize and confirm the PO.",
+            args["supplier_id"], args["products"]
+        )),
         "list_returns" => {
-            let filters = build_filters(args, &[("status","state","="),("date_from","planned_date",">="),("date_to","planned_date","<="),("reason","comment","ilike")]);
+            let filters = build_filters(
+                args,
+                &[
+                    ("status", "state", "="),
+                    ("date_from", "planned_date", ">="),
+                    ("date_to", "planned_date", "<="),
+                    ("reason", "comment", "ilike"),
+                ],
+            );
             let limit = args["limit"].as_i64().unwrap_or(25);
             let offset = args["offset"].as_i64().unwrap_or(0);
             let data = c.search_read("stock.shipment.out.return", &json!({"filters":filters,"fields":["id","number","state","planned_date","effective_date","origin","comment"],"limit":limit,"offset":offset})).await?;
@@ -250,7 +386,22 @@ async fn call_tool_inner(name: &str, args: &Value, c: &FulfilClient) -> Result<S
         }
         "get_return" => {
             let id = args["return_id"].as_i64().ok_or("return_id required")?;
-            let data = c.read_one("stock.shipment.out.return", id, &["id","number","state","planned_date","effective_date","origin","comment","moves"]).await?;
+            let data = c
+                .read_one(
+                    "stock.shipment.out.return",
+                    id,
+                    &[
+                        "id",
+                        "number",
+                        "state",
+                        "planned_date",
+                        "effective_date",
+                        "origin",
+                        "comment",
+                        "moves",
+                    ],
+                )
+                .await?;
             Ok(serde_json::to_string_pretty(&data).unwrap_or_default())
         }
         "return_rate_report" => {
@@ -264,21 +415,32 @@ async fn call_tool_inner(name: &str, args: &Value, c: &FulfilClient) -> Result<S
             Ok(serde_json::to_string_pretty(&data).unwrap_or_default())
         }
         "warehouse_utilization" => {
-            let mut filters = vec![json!(["type","=","warehouse"])];
-            if let Some(n) = args["warehouse_name"].as_str() { filters.push(json!(["name","ilike",format!("%{n}%")])); }
-            let data = c.search_read("stock.location", &json!({"filters":filters,"fields":["id","name","code"],"limit":100})).await?;
+            let mut filters = vec![json!(["type", "=", "warehouse"])];
+            if let Some(n) = args["warehouse_name"].as_str() {
+                filters.push(json!(["name", "ilike", format!("%{n}%")]));
+            }
+            let data = c
+                .search_read(
+                    "stock.location",
+                    &json!({"filters":filters,"fields":["id","name","code"],"limit":100}),
+                )
+                .await?;
             Ok(serde_json::to_string_pretty(&data).unwrap_or_default())
         }
         "pending_receipts" => {
-            let mut filters: Vec<Value> = vec![json!(["state","in",["waiting","assigned"]])];
-            if let Some(n) = args["warehouse_name"].as_str() { filters.push(json!(["warehouse.name","ilike",format!("%{n}%")])); }
+            let mut filters: Vec<Value> = vec![json!(["state", "in", ["waiting", "assigned"]])];
+            if let Some(n) = args["warehouse_name"].as_str() {
+                filters.push(json!(["warehouse.name", "ilike", format!("%{n}%")]));
+            }
             let limit = args["limit"].as_i64().unwrap_or(50);
             let data = c.search_read("stock.shipment.in", &json!({"filters":filters,"fields":["id","number","state","planned_date","supplier.name","warehouse.name"],"limit":limit,"order":[["planned_date","ASC"]]})).await?;
             Ok(serde_json::to_string_pretty(&data).unwrap_or_default())
         }
         "pick_list" => {
-            let mut filters: Vec<Value> = vec![json!(["state","in",["waiting","assigned"]])];
-            if let Some(n) = args["warehouse_name"].as_str() { filters.push(json!(["warehouse.name","ilike",format!("%{n}%")])); }
+            let mut filters: Vec<Value> = vec![json!(["state", "in", ["waiting", "assigned"]])];
+            if let Some(n) = args["warehouse_name"].as_str() {
+                filters.push(json!(["warehouse.name", "ilike", format!("%{n}%")]));
+            }
             let limit = args["limit"].as_i64().unwrap_or(30);
             let data = c.search_read("stock.shipment.out", &json!({"filters":filters,"fields":["id","number","state","planned_date","customer.name","moves"],"limit":limit,"order":[["planned_date","ASC"]]})).await?;
             Ok(serde_json::to_string_pretty(&data).unwrap_or_default())
@@ -289,27 +451,41 @@ async fn call_tool_inner(name: &str, args: &Value, c: &FulfilClient) -> Result<S
 
 #[tokio::main]
 async fn main() {
-    tracing_subscriber::fmt().with_env_filter("info").with_writer(std::io::stderr).init();
+    tracing_subscriber::fmt()
+        .with_env_filter("info")
+        .with_writer(std::io::stderr)
+        .init();
     let client = match FulfilClient::new() {
         Ok(c) => c,
-        Err(e) => { eprintln!("Error: {e}"); std::process::exit(1); }
+        Err(e) => {
+            eprintln!("Error: {e}");
+            std::process::exit(1);
+        }
     };
     eprintln!("[fulfil-mcp] Running (28 tools, base: {})", client.base_url);
     let stdin = std::io::stdin();
     let mut line = String::new();
     loop {
         line.clear();
-        if stdin.lock().read_line(&mut line).unwrap_or(0) == 0 { break; }
+        if stdin.lock().read_line(&mut line).unwrap_or(0) == 0 {
+            break;
+        }
         let trimmed = line.trim();
-        if trimmed.is_empty() { continue; }
+        if trimmed.is_empty() {
+            continue;
+        }
         let req: JsonRpcRequest = match serde_json::from_str(trimmed) {
             Ok(r) => r,
             Err(_) => continue,
         };
         let resp = match req.method.as_str() {
-            "initialize" => json!({"jsonrpc":"2.0","id":req.id,"result":{"protocolVersion":"2024-11-05","capabilities":{"tools":{}},"serverInfo":{"name":"fulfil-mcp","version":"0.1.0"}}}),
+            "initialize" => {
+                json!({"jsonrpc":"2.0","id":req.id,"result":{"protocolVersion":"2024-11-05","capabilities":{"tools":{}},"serverInfo":{"name":"fulfil-mcp","version":"0.1.0"}}})
+            }
             "notifications/initialized" => continue,
-            "tools/list" => json!({"jsonrpc":"2.0","id":req.id,"result":{"tools":tool_definitions()}}),
+            "tools/list" => {
+                json!({"jsonrpc":"2.0","id":req.id,"result":{"tools":tool_definitions()}})
+            }
             "tools/call" => {
                 let params = req.params.unwrap_or(json!({}));
                 let name = params["name"].as_str().unwrap_or("");
@@ -317,7 +493,9 @@ async fn main() {
                 let result = call_tool(name, &args, &client).await;
                 json!({"jsonrpc":"2.0","id":req.id,"result":result})
             }
-            _ => json!({"jsonrpc":"2.0","id":req.id,"error":{"code":-32601,"message":"Method not found"}}),
+            _ => {
+                json!({"jsonrpc":"2.0","id":req.id,"error":{"code":-32601,"message":"Method not found"}})
+            }
         };
         println!("{}", serde_json::to_string(&resp).unwrap());
     }
