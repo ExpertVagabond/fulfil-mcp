@@ -6,6 +6,13 @@
  * Provides tools for inventory, orders, shipments, customers,
  * analytics, and daily operations via Fulfil.io REST API v2.
  *
+ * Security:
+ * - API keys redacted from all error messages before client delivery
+ * - All tool inputs validated via Zod schemas (type + bounds)
+ * - Environment variables validated at import time (fail-fast)
+ * - No shell execution — all API calls via structured HTTP fetch
+ * - Numeric limits clamped to prevent excessive API requests
+ *
  * Environment variables:
  *   FULFIL_API_KEY     — Fulfil.io API key (Bearer token)
  *   FULFIL_SUBDOMAIN   — Fulfil.io tenant subdomain
@@ -15,7 +22,25 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 
+// ── Environment validation (fail-fast) ──────────────────────────────────────
+
+const REQUIRED_ENV = ["FULFIL_API_KEY", "FULFIL_SUBDOMAIN"] as const;
+for (const key of REQUIRED_ENV) {
+  if (!process.env[key]) {
+    console.error(`Missing required environment variable: ${key}`);
+    process.exit(1);
+  }
+}
+
 // ── Security helpers ──────────────────────────────────────────────────────────
+
+/** Validate a string input: type check, length bound, no null bytes. */
+function validateInput(value: unknown, name: string, maxLen = 1024): string {
+  if (typeof value !== "string") throw new Error(`${name} must be a string`);
+  if (value.includes("\0")) throw new Error(`${name} contains null byte`);
+  if (value.length > maxLen) throw new Error(`${name} exceeds max length (${maxLen})`);
+  return value;
+}
 
 function redactEnvSecrets(message: string): string {
   const key = process.env.FULFIL_API_KEY;
