@@ -40,16 +40,41 @@ export interface FulfilError {
 // Client
 // ---------------------------------------------------------------------------
 
+/**
+ * Redact sensitive values (API keys) from error messages.
+ */
+function redactSensitive(message: string, apiKey: string): string {
+  if (!apiKey) return message;
+  return message.replace(new RegExp(apiKey.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g"), "[REDACTED]");
+}
+
+/**
+ * Validate a numeric resource ID.
+ */
+export function validateNumericId(id: number, label = "ID"): number {
+  if (!Number.isFinite(id) || id < 0 || !Number.isInteger(id)) {
+    throw new Error(`Invalid ${label}: must be a non-negative integer`);
+  }
+  return id;
+}
+
 export class FulfilClient {
   private readonly baseUrl: string;
   private readonly headers: Record<string, string>;
   private readonly maxRetries: number;
   private readonly retryDelay: number;
+  private readonly apiKey: string;
 
   constructor(config: FulfilConfig) {
     if (!config.apiKey) throw new Error("FULFIL_API_KEY is required");
     if (!config.subdomain) throw new Error("FULFIL_SUBDOMAIN is required");
 
+    // Validate subdomain to prevent URL injection
+    if (!/^[a-zA-Z0-9-]+$/.test(config.subdomain)) {
+      throw new Error("FULFIL_SUBDOMAIN must contain only alphanumeric characters and hyphens");
+    }
+
+    this.apiKey = config.apiKey;
     this.baseUrl = `https://${config.subdomain}.fulfil.io/api/v2`;
     this.headers = {
       Authorization: `Bearer ${config.apiKey}`,
@@ -107,7 +132,10 @@ export class FulfilClient {
         // Non-retryable client error
         const errBody = await res.text();
         throw new Error(
-          `Fulfil API error ${res.status} ${res.statusText}: ${errBody}`,
+          redactSensitive(
+            `Fulfil API error ${res.status} ${res.statusText}: ${errBody}`,
+            this.apiKey,
+          ),
         );
       } catch (err: unknown) {
         if (err instanceof TypeError && attempt < this.maxRetries) {

@@ -15,6 +15,20 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 
+// ── Security helpers ──────────────────────────────────────────────────────────
+
+function redactEnvSecrets(message: string): string {
+  const key = process.env.FULFIL_API_KEY;
+  if (key && message.includes(key)) {
+    return message.replace(new RegExp(key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g"), "[REDACTED]");
+  }
+  return message;
+}
+
+function safeErrorMessage(err: unknown): string {
+  return redactEnvSecrets(err instanceof Error ? err.message : String(err));
+}
+
 // Tool implementations
 import {
   listProducts,
@@ -91,7 +105,7 @@ server.tool(
       return { content: [{ type: "text", text }] };
     } catch (err) {
       return {
-        content: [{ type: "text", text: `Error: ${(err as Error).message}` }],
+        content: [{ type: "text", text: `Error: ${safeErrorMessage(err)}` }],
         isError: true,
       };
     }
@@ -110,7 +124,7 @@ server.tool(
       return { content: [{ type: "text", text }] };
     } catch (err) {
       return {
-        content: [{ type: "text", text: `Error: ${(err as Error).message}` }],
+        content: [{ type: "text", text: `Error: ${safeErrorMessage(err)}` }],
         isError: true,
       };
     }
@@ -129,7 +143,7 @@ server.tool(
       return { content: [{ type: "text", text }] };
     } catch (err) {
       return {
-        content: [{ type: "text", text: `Error: ${(err as Error).message}` }],
+        content: [{ type: "text", text: `Error: ${safeErrorMessage(err)}` }],
         isError: true,
       };
     }
@@ -149,7 +163,7 @@ server.tool(
       return { content: [{ type: "text", text }] };
     } catch (err) {
       return {
-        content: [{ type: "text", text: `Error: ${(err as Error).message}` }],
+        content: [{ type: "text", text: `Error: ${safeErrorMessage(err)}` }],
         isError: true,
       };
     }
@@ -169,7 +183,7 @@ server.tool(
       return { content: [{ type: "text", text }] };
     } catch (err) {
       return {
-        content: [{ type: "text", text: `Error: ${(err as Error).message}` }],
+        content: [{ type: "text", text: `Error: ${safeErrorMessage(err)}` }],
         isError: true,
       };
     }
@@ -195,7 +209,7 @@ server.tool(
       return { content: [{ type: "text", text }] };
     } catch (err) {
       return {
-        content: [{ type: "text", text: `Error: ${(err as Error).message}` }],
+        content: [{ type: "text", text: `Error: ${safeErrorMessage(err)}` }],
         isError: true,
       };
     }
@@ -214,7 +228,7 @@ server.tool(
       return { content: [{ type: "text", text }] };
     } catch (err) {
       return {
-        content: [{ type: "text", text: `Error: ${(err as Error).message}` }],
+        content: [{ type: "text", text: `Error: ${safeErrorMessage(err)}` }],
         isError: true,
       };
     }
@@ -233,7 +247,7 @@ server.tool(
       return { content: [{ type: "text", text }] };
     } catch (err) {
       return {
-        content: [{ type: "text", text: `Error: ${(err as Error).message}` }],
+        content: [{ type: "text", text: `Error: ${safeErrorMessage(err)}` }],
         isError: true,
       };
     }
@@ -253,7 +267,7 @@ server.tool(
       return { content: [{ type: "text", text }] };
     } catch (err) {
       return {
-        content: [{ type: "text", text: `Error: ${(err as Error).message}` }],
+        content: [{ type: "text", text: `Error: ${safeErrorMessage(err)}` }],
         isError: true,
       };
     }
@@ -272,7 +286,7 @@ server.tool(
       return { content: [{ type: "text", text }] };
     } catch (err) {
       return {
-        content: [{ type: "text", text: `Error: ${(err as Error).message}` }],
+        content: [{ type: "text", text: `Error: ${safeErrorMessage(err)}` }],
         isError: true,
       };
     }
@@ -298,7 +312,7 @@ server.tool(
       return { content: [{ type: "text", text }] };
     } catch (err) {
       return {
-        content: [{ type: "text", text: `Error: ${(err as Error).message}` }],
+        content: [{ type: "text", text: `Error: ${safeErrorMessage(err)}` }],
         isError: true,
       };
     }
@@ -318,7 +332,7 @@ server.tool(
       return { content: [{ type: "text", text }] };
     } catch (err) {
       return {
-        content: [{ type: "text", text: `Error: ${(err as Error).message}` }],
+        content: [{ type: "text", text: `Error: ${safeErrorMessage(err)}` }],
         isError: true,
       };
     }
@@ -343,7 +357,7 @@ server.tool(
       return { content: [{ type: "text", text }] };
     } catch (err) {
       return {
-        content: [{ type: "text", text: `Error: ${(err as Error).message}` }],
+        content: [{ type: "text", text: `Error: ${safeErrorMessage(err)}` }],
         isError: true,
       };
     }
@@ -363,7 +377,7 @@ server.tool(
       return { content: [{ type: "text", text }] };
     } catch (err) {
       return {
-        content: [{ type: "text", text: `Error: ${(err as Error).message}` }],
+        content: [{ type: "text", text: `Error: ${safeErrorMessage(err)}` }],
         isError: true,
       };
     }
@@ -385,7 +399,7 @@ server.tool(
       return { content: [{ type: "text", text }] };
     } catch (err) {
       return {
-        content: [{ type: "text", text: `Error: ${(err as Error).message}` }],
+        content: [{ type: "text", text: `Error: ${safeErrorMessage(err)}` }],
         isError: true,
       };
     }
@@ -406,7 +420,7 @@ server.tool(
       return { content: [{ type: "text", text }] };
     } catch (err) {
       return {
-        content: [{ type: "text", text: `Error: ${(err as Error).message}` }],
+        content: [{ type: "text", text: `Error: ${safeErrorMessage(err)}` }],
         isError: true,
       };
     }
@@ -425,7 +439,7 @@ server.tool(
       return { content: [{ type: "text", text }] };
     } catch (err) {
       return {
-        content: [{ type: "text", text: `Error: ${(err as Error).message}` }],
+        content: [{ type: "text", text: `Error: ${safeErrorMessage(err)}` }],
         isError: true,
       };
     }
@@ -444,7 +458,7 @@ server.tool(
       return { content: [{ type: "text", text }] };
     } catch (err) {
       return {
-        content: [{ type: "text", text: `Error: ${(err as Error).message}` }],
+        content: [{ type: "text", text: `Error: ${safeErrorMessage(err)}` }],
         isError: true,
       };
     }
@@ -470,7 +484,7 @@ server.tool(
       return { content: [{ type: "text", text }] };
     } catch (err) {
       return {
-        content: [{ type: "text", text: `Error: ${(err as Error).message}` }],
+        content: [{ type: "text", text: `Error: ${safeErrorMessage(err)}` }],
         isError: true,
       };
     }
@@ -489,7 +503,7 @@ server.tool(
       return { content: [{ type: "text", text }] };
     } catch (err) {
       return {
-        content: [{ type: "text", text: `Error: ${(err as Error).message}` }],
+        content: [{ type: "text", text: `Error: ${safeErrorMessage(err)}` }],
         isError: true,
       };
     }
@@ -508,7 +522,7 @@ server.tool(
       return { content: [{ type: "text", text }] };
     } catch (err) {
       return {
-        content: [{ type: "text", text: `Error: ${(err as Error).message}` }],
+        content: [{ type: "text", text: `Error: ${safeErrorMessage(err)}` }],
         isError: true,
       };
     }
@@ -535,7 +549,7 @@ server.tool(
       return { content: [{ type: "text", text }] };
     } catch (err) {
       return {
-        content: [{ type: "text", text: `Error: ${(err as Error).message}` }],
+        content: [{ type: "text", text: `Error: ${safeErrorMessage(err)}` }],
         isError: true,
       };
     }
@@ -561,7 +575,7 @@ server.tool(
       return { content: [{ type: "text", text }] };
     } catch (err) {
       return {
-        content: [{ type: "text", text: `Error: ${(err as Error).message}` }],
+        content: [{ type: "text", text: `Error: ${safeErrorMessage(err)}` }],
         isError: true,
       };
     }
@@ -580,7 +594,7 @@ server.tool(
       return { content: [{ type: "text", text }] };
     } catch (err) {
       return {
-        content: [{ type: "text", text: `Error: ${(err as Error).message}` }],
+        content: [{ type: "text", text: `Error: ${safeErrorMessage(err)}` }],
         isError: true,
       };
     }
@@ -601,7 +615,7 @@ server.tool(
       return { content: [{ type: "text", text }] };
     } catch (err) {
       return {
-        content: [{ type: "text", text: `Error: ${(err as Error).message}` }],
+        content: [{ type: "text", text: `Error: ${safeErrorMessage(err)}` }],
         isError: true,
       };
     }
@@ -620,7 +634,7 @@ server.tool(
       return { content: [{ type: "text", text }] };
     } catch (err) {
       return {
-        content: [{ type: "text", text: `Error: ${(err as Error).message}` }],
+        content: [{ type: "text", text: `Error: ${safeErrorMessage(err)}` }],
         isError: true,
       };
     }
@@ -639,7 +653,7 @@ server.tool(
       return { content: [{ type: "text", text }] };
     } catch (err) {
       return {
-        content: [{ type: "text", text: `Error: ${(err as Error).message}` }],
+        content: [{ type: "text", text: `Error: ${safeErrorMessage(err)}` }],
         isError: true,
       };
     }
@@ -659,7 +673,7 @@ server.tool(
       return { content: [{ type: "text", text }] };
     } catch (err) {
       return {
-        content: [{ type: "text", text: `Error: ${(err as Error).message}` }],
+        content: [{ type: "text", text: `Error: ${safeErrorMessage(err)}` }],
         isError: true,
       };
     }
@@ -679,7 +693,7 @@ server.tool(
       return { content: [{ type: "text", text }] };
     } catch (err) {
       return {
-        content: [{ type: "text", text: `Error: ${(err as Error).message}` }],
+        content: [{ type: "text", text: `Error: ${safeErrorMessage(err)}` }],
         isError: true,
       };
     }
