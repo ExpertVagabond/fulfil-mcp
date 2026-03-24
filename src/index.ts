@@ -21,6 +21,9 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
+import {
+  sanitizeError,
+} from "@psm/mcp-core-ts";
 
 // ── Environment validation (fail-fast) ──────────────────────────────────────
 
@@ -32,26 +35,18 @@ for (const key of REQUIRED_ENV) {
   }
 }
 
-// ── Security helpers ──────────────────────────────────────────────────────────
-
-/** Validate a string input: type check, length bound, no null bytes. */
-function validateInput(value: unknown, name: string, maxLen = 1024): string {
-  if (typeof value !== "string") throw new Error(`${name} must be a string`);
-  if (value.includes("\0")) throw new Error(`${name} contains null byte`);
-  if (value.length > maxLen) throw new Error(`${name} exceeds max length (${maxLen})`);
-  return value;
-}
-
-function redactEnvSecrets(message: string): string {
-  const key = process.env.FULFIL_API_KEY;
-  if (key && message.includes(key)) {
-    return message.replace(new RegExp(key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g"), "[REDACTED]");
-  }
-  return message;
-}
+// ── Result + error helpers (using @psm/mcp-core-ts sanitizeError) ────────────
 
 function safeErrorMessage(err: unknown): string {
-  return redactEnvSecrets(err instanceof Error ? err.message : String(err));
+  return sanitizeError(err instanceof Error ? err.message : String(err));
+}
+
+function ok(text: string) {
+  return { content: [{ type: "text" as const, text }] };
+}
+
+function fail(err: unknown) {
+  return { content: [{ type: "text" as const, text: `Error: ${safeErrorMessage(err)}` }], isError: true as const };
 }
 
 // Tool implementations
@@ -127,12 +122,9 @@ server.tool(
   async (args) => {
     try {
       const text = await listProducts(args);
-      return { content: [{ type: "text", text }] };
+      return ok(text);
     } catch (err) {
-      return {
-        content: [{ type: "text", text: `Error: ${safeErrorMessage(err)}` }],
-        isError: true,
-      };
+      return fail(err);
     }
   },
 );
@@ -146,12 +138,9 @@ server.tool(
   async (args) => {
     try {
       const text = await getProduct(args);
-      return { content: [{ type: "text", text }] };
+      return ok(text);
     } catch (err) {
-      return {
-        content: [{ type: "text", text: `Error: ${safeErrorMessage(err)}` }],
-        isError: true,
-      };
+      return fail(err);
     }
   },
 );
@@ -165,12 +154,9 @@ server.tool(
   async (args) => {
     try {
       const text = await checkInventory(args);
-      return { content: [{ type: "text", text }] };
+      return ok(text);
     } catch (err) {
-      return {
-        content: [{ type: "text", text: `Error: ${safeErrorMessage(err)}` }],
-        isError: true,
-      };
+      return fail(err);
     }
   },
 );
@@ -185,12 +171,9 @@ server.tool(
   async (args) => {
     try {
       const text = await lowStockAlert(args);
-      return { content: [{ type: "text", text }] };
+      return ok(text);
     } catch (err) {
-      return {
-        content: [{ type: "text", text: `Error: ${safeErrorMessage(err)}` }],
-        isError: true,
-      };
+      return fail(err);
     }
   },
 );
@@ -205,12 +188,9 @@ server.tool(
   async (args) => {
     try {
       const text = await inventoryByLocation(args);
-      return { content: [{ type: "text", text }] };
+      return ok(text);
     } catch (err) {
-      return {
-        content: [{ type: "text", text: `Error: ${safeErrorMessage(err)}` }],
-        isError: true,
-      };
+      return fail(err);
     }
   },
 );
@@ -231,12 +211,9 @@ server.tool(
   async (args) => {
     try {
       const text = await listOrders(args);
-      return { content: [{ type: "text", text }] };
+      return ok(text);
     } catch (err) {
-      return {
-        content: [{ type: "text", text: `Error: ${safeErrorMessage(err)}` }],
-        isError: true,
-      };
+      return fail(err);
     }
   },
 );
@@ -250,12 +227,9 @@ server.tool(
   async (args) => {
     try {
       const text = await getOrder(args);
-      return { content: [{ type: "text", text }] };
+      return ok(text);
     } catch (err) {
-      return {
-        content: [{ type: "text", text: `Error: ${safeErrorMessage(err)}` }],
-        isError: true,
-      };
+      return fail(err);
     }
   },
 );
@@ -269,12 +243,9 @@ server.tool(
   async (args) => {
     try {
       const text = await orderStatus(args);
-      return { content: [{ type: "text", text }] };
+      return ok(text);
     } catch (err) {
-      return {
-        content: [{ type: "text", text: `Error: ${safeErrorMessage(err)}` }],
-        isError: true,
-      };
+      return fail(err);
     }
   },
 );
@@ -289,12 +260,9 @@ server.tool(
   async (args) => {
     try {
       const text = await delayedOrders(args);
-      return { content: [{ type: "text", text }] };
+      return ok(text);
     } catch (err) {
-      return {
-        content: [{ type: "text", text: `Error: ${safeErrorMessage(err)}` }],
-        isError: true,
-      };
+      return fail(err);
     }
   },
 );
@@ -308,12 +276,9 @@ server.tool(
   async (args) => {
     try {
       const text = await recentOrders(args);
-      return { content: [{ type: "text", text }] };
+      return ok(text);
     } catch (err) {
-      return {
-        content: [{ type: "text", text: `Error: ${safeErrorMessage(err)}` }],
-        isError: true,
-      };
+      return fail(err);
     }
   },
 );
@@ -334,12 +299,9 @@ server.tool(
   async (args) => {
     try {
       const text = await listShipments(args);
-      return { content: [{ type: "text", text }] };
+      return ok(text);
     } catch (err) {
-      return {
-        content: [{ type: "text", text: `Error: ${safeErrorMessage(err)}` }],
-        isError: true,
-      };
+      return fail(err);
     }
   },
 );
@@ -354,12 +316,9 @@ server.tool(
   async (args) => {
     try {
       const text = await shipmentExceptions(args);
-      return { content: [{ type: "text", text }] };
+      return ok(text);
     } catch (err) {
-      return {
-        content: [{ type: "text", text: `Error: ${safeErrorMessage(err)}` }],
-        isError: true,
-      };
+      return fail(err);
     }
   },
 );
@@ -379,12 +338,9 @@ server.tool(
   async (args) => {
     try {
       const text = await searchCustomers(args);
-      return { content: [{ type: "text", text }] };
+      return ok(text);
     } catch (err) {
-      return {
-        content: [{ type: "text", text: `Error: ${safeErrorMessage(err)}` }],
-        isError: true,
-      };
+      return fail(err);
     }
   },
 );
@@ -399,12 +355,9 @@ server.tool(
   async (args) => {
     try {
       const text = await customerOrderHistory(args);
-      return { content: [{ type: "text", text }] };
+      return ok(text);
     } catch (err) {
-      return {
-        content: [{ type: "text", text: `Error: ${safeErrorMessage(err)}` }],
-        isError: true,
-      };
+      return fail(err);
     }
   },
 );
@@ -421,12 +374,9 @@ server.tool(
   async (args) => {
     try {
       const text = await salesSummary(args);
-      return { content: [{ type: "text", text }] };
+      return ok(text);
     } catch (err) {
-      return {
-        content: [{ type: "text", text: `Error: ${safeErrorMessage(err)}` }],
-        isError: true,
-      };
+      return fail(err);
     }
   },
 );
@@ -442,12 +392,9 @@ server.tool(
   async (args) => {
     try {
       const text = await topProducts(args);
-      return { content: [{ type: "text", text }] };
+      return ok(text);
     } catch (err) {
-      return {
-        content: [{ type: "text", text: `Error: ${safeErrorMessage(err)}` }],
-        isError: true,
-      };
+      return fail(err);
     }
   },
 );
@@ -461,12 +408,9 @@ server.tool(
   async (args) => {
     try {
       const text = await inventoryValuation(args);
-      return { content: [{ type: "text", text }] };
+      return ok(text);
     } catch (err) {
-      return {
-        content: [{ type: "text", text: `Error: ${safeErrorMessage(err)}` }],
-        isError: true,
-      };
+      return fail(err);
     }
   },
 );
@@ -480,12 +424,9 @@ server.tool(
   async () => {
     try {
       const text = await dailyOpsBriefing();
-      return { content: [{ type: "text", text }] };
+      return ok(text);
     } catch (err) {
-      return {
-        content: [{ type: "text", text: `Error: ${safeErrorMessage(err)}` }],
-        isError: true,
-      };
+      return fail(err);
     }
   },
 );
@@ -506,12 +447,9 @@ server.tool(
   async (args) => {
     try {
       const text = await listPurchaseOrders(args);
-      return { content: [{ type: "text", text }] };
+      return ok(text);
     } catch (err) {
-      return {
-        content: [{ type: "text", text: `Error: ${safeErrorMessage(err)}` }],
-        isError: true,
-      };
+      return fail(err);
     }
   },
 );
@@ -525,12 +463,9 @@ server.tool(
   async (args) => {
     try {
       const text = await getPurchaseOrder(args);
-      return { content: [{ type: "text", text }] };
+      return ok(text);
     } catch (err) {
-      return {
-        content: [{ type: "text", text: `Error: ${safeErrorMessage(err)}` }],
-        isError: true,
-      };
+      return fail(err);
     }
   },
 );
@@ -544,12 +479,9 @@ server.tool(
   async (args) => {
     try {
       const text = await overduePurchaseOrders(args);
-      return { content: [{ type: "text", text }] };
+      return ok(text);
     } catch (err) {
-      return {
-        content: [{ type: "text", text: `Error: ${safeErrorMessage(err)}` }],
-        isError: true,
-      };
+      return fail(err);
     }
   },
 );
@@ -571,12 +503,9 @@ server.tool(
   async (args) => {
     try {
       const text = await createPurchaseOrderDraft(args);
-      return { content: [{ type: "text", text }] };
+      return ok(text);
     } catch (err) {
-      return {
-        content: [{ type: "text", text: `Error: ${safeErrorMessage(err)}` }],
-        isError: true,
-      };
+      return fail(err);
     }
   },
 );
@@ -597,12 +526,9 @@ server.tool(
   async (args) => {
     try {
       const text = await listReturns(args);
-      return { content: [{ type: "text", text }] };
+      return ok(text);
     } catch (err) {
-      return {
-        content: [{ type: "text", text: `Error: ${safeErrorMessage(err)}` }],
-        isError: true,
-      };
+      return fail(err);
     }
   },
 );
@@ -616,12 +542,9 @@ server.tool(
   async (args) => {
     try {
       const text = await getReturn(args);
-      return { content: [{ type: "text", text }] };
+      return ok(text);
     } catch (err) {
-      return {
-        content: [{ type: "text", text: `Error: ${safeErrorMessage(err)}` }],
-        isError: true,
-      };
+      return fail(err);
     }
   },
 );
@@ -637,12 +560,9 @@ server.tool(
   async (args) => {
     try {
       const text = await returnRateReport(args);
-      return { content: [{ type: "text", text }] };
+      return ok(text);
     } catch (err) {
-      return {
-        content: [{ type: "text", text: `Error: ${safeErrorMessage(err)}` }],
-        isError: true,
-      };
+      return fail(err);
     }
   },
 );
@@ -656,12 +576,9 @@ server.tool(
   async () => {
     try {
       const text = await listWarehouses({});
-      return { content: [{ type: "text", text }] };
+      return ok(text);
     } catch (err) {
-      return {
-        content: [{ type: "text", text: `Error: ${safeErrorMessage(err)}` }],
-        isError: true,
-      };
+      return fail(err);
     }
   },
 );
@@ -675,12 +592,9 @@ server.tool(
   async (args) => {
     try {
       const text = await warehouseUtilization(args);
-      return { content: [{ type: "text", text }] };
+      return ok(text);
     } catch (err) {
-      return {
-        content: [{ type: "text", text: `Error: ${safeErrorMessage(err)}` }],
-        isError: true,
-      };
+      return fail(err);
     }
   },
 );
@@ -695,12 +609,9 @@ server.tool(
   async (args) => {
     try {
       const text = await pendingReceipts(args);
-      return { content: [{ type: "text", text }] };
+      return ok(text);
     } catch (err) {
-      return {
-        content: [{ type: "text", text: `Error: ${safeErrorMessage(err)}` }],
-        isError: true,
-      };
+      return fail(err);
     }
   },
 );
@@ -715,12 +626,9 @@ server.tool(
   async (args) => {
     try {
       const text = await pickList(args);
-      return { content: [{ type: "text", text }] };
+      return ok(text);
     } catch (err) {
-      return {
-        content: [{ type: "text", text: `Error: ${safeErrorMessage(err)}` }],
-        isError: true,
-      };
+      return fail(err);
     }
   },
 );
