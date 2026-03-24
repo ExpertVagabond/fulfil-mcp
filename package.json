@@ -2,6 +2,7 @@
   "name": "fulfil-mcp",
   "version": "0.1.0",
   "description": "MCP server for Fulfil.io ERP — 29 tools for inventory, orders, shipments, customers, analytics, purchasing, returns, and warehouse operations",
+  "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
@@ -39,7 +40,8 @@
   },
   "homepage": "https://github.com/ExpertVagabond/fulfil-mcp#readme",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.0.0"
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "@psm/mcp-core-ts": "file:../psm-mcp-core-ts"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",
