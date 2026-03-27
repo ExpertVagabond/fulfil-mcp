@@ -1,6 +1,6 @@
 {
   "name": "fulfil-mcp",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "MCP server for Fulfil.io ERP — 29 tools for inventory, orders, shipments, customers, analytics, purchasing, returns, and warehouse operations",
   "type": "module",
   "main": "dist/index.js",
